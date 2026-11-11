@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+build/
+debug/
+release/
+*.user
+*.o
+*.obj
+*.exe
+*.dll
+*.apk
+*.idsig

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 智能小车控制台</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">WIRELESS VEHICLE CONTROL</p>
+        <h1>ESP32 智能小车控制台</h1>
+        <p class="subtitle">实时 TCP 指令 · 300 ms 看门狗自动停车 · NetAssist 双通道</p>
+      </div>
+      <div class="status-pill" id="connectionPill">
+        <span class="status-dot"></span>
+        <span id="connectionText">正在连接桥接服务</span>
+      </div>
+    </header>
+
+    <section class="dashboard">
+      <aside class="panel telemetry">
+        <div class="panel-heading">
+          <span>车辆状态</span>
+          <span class="live-label">LIVE</span>
+        </div>
+
+        <div class="car-visual" aria-hidden="true">
+          <div class="car-body">
+            <span class="wheel wheel-fl"></span>
+            <span class="wheel wheel-fr"></span>
+            <span class="wheel wheel-bl"></span>
+            <span class="wheel wheel-br"></span>
+            <span class="car-window"></span>
+            <span class="car-light left"></span>
+            <span class="car-light right"></span>
+          </div>
+          <div class="signal-ring"></div>
+        </div>
+
+        <dl class="metrics">
+          <div><dt>车辆连接</dt><dd id="carState">等待 ESP32</dd></div>
+          <div><dt>驱动模式</dt><dd>IN1~IN4 PWM</dd></div>
+          <div><dt>桥接端口</dt><dd class="mono" id="bridgeAddress">0.0.0.0:8080</dd></div>
+          <div><dt>最后指令</dt><dd class="mono" id="lastCommand">—</dd></div>
+          <div><dt>自动停车</dt><dd class="mono">300 ms</dd></div>
+          <div><dt>累计指令</dt><dd class="mono" id="commandCount">0</dd></div>
+        </dl>
+
+        <div class="netassist-card">
+          <div class="netassist-title">NETASSIST 手动通道</div>
+          <p>将 NetAssist 设为 <strong>TCP Client</strong>，连接本机桥接端口。</p>
+          <button class="copy-button" id="copyBridge" type="button">复制 127.0.0.1:8080</button>
+          <p class="tiny">可发送 <span class="key">F</span> 前进、<span class="key">B</span> 后退、<span class="key">L</span> 左转、<span class="key">R</span> 右转、<span class="key">S</span> 停车。</p>
+        </div>
+      </aside>
+
+      <section class="control-column">
+        <div class="control-panel">
+          <div class="control-header">
+            <div>
+              <p class="eyebrow">DRIVE CONTROL</p>
+              <h2>方向控制</h2>
+            </div>
+            <span class="hint">同时按键可平滑转向 · 松开停车 · 100 ms 刷新</span>
+          </div>
+
+          <div class="control-pad" aria-label="小车方向控制">
+            <button class="control-button forward" type="button" data-command="F" aria-label="前进">
+              <span class="arrow">↑</span>
+              <span class="control-label">前进</span>
+              <span class="hotkey">W</span>
+            </button>
+            <button class="control-button left" type="button" data-command="L" aria-label="左转">
+              <span class="arrow">←</span>
+              <span class="control-label">原地左转</span>
+              <span class="hotkey">A</span>
+            </button>
+            <button class="control-button stop" type="button" data-command="S" aria-label="停车">
+              <span class="stop-mark">■</span>
+              <span class="control-label">停车</span>
+              <span class="hotkey">SPACE</span>
+            </button>
+            <button class="control-button right" type="button" data-command="R" aria-label="右转">
+              <span class="arrow">→</span>
+              <span class="control-label">原地右转</span>
+              <span class="hotkey">D</span>
+            </button>
+            <button class="control-button backward" type="button" data-command="B" aria-label="后退">
+              <span class="arrow">↓</span>
+              <span class="control-label">后退</span>
+              <span class="hotkey">S / ↓</span>
+            </button>
+          </div>
+
+          <div class="speed-strip">
+            <button class="boost-button" id="boostButton" type="button">
+              <span class="boost-key">SHIFT</span>
+              <span>按住渐加速</span>
+            </button>
+            <div class="speed-indicator">
+              <span class="speed-dot"></span>
+              <span id="speedMode">标准速度</span>
+            </div>
+          </div>
+
+          <button class="emergency" id="emergencyStop" type="button">
+            <span>紧急停车</span>
+            <span class="mono">SEND S</span>
+          </button>
+        </div>
+
+        <div class="quick-guide">
+          <div><span class="guide-number">01</span><p>停止 NetAssist 当前的 TCP Server。</p></div>
+          <div><span class="guide-number">02</span><p>启动本控制台，小车会自动重连桥接服务。</p></div>
+          <div><span class="guide-number">03</span><p>NetAssist 改作 TCP Client 连接本机 8080，网页可用组合键平滑转向。</p></div>
+        </div>
+      </section>
+
+      <aside class="panel log-panel">
+        <div class="panel-heading">
+          <span>实时通信</span>
+          <button class="clear-button" id="clearLog" type="button">清空</button>
+        </div>
+        <div class="log-stream" id="logStream" aria-live="polite"></div>
+        <div class="connection-guide">
+          <div class="guide-title">网络参数</div>
+          <p>小车 IP <span class="mono" id="carIp">—</span></p>
+          <p>电脑局域网 IP <span class="mono" id="lanIp">—</span></p>
+          <p>网页仅在本机开放，避免局域网其他设备误操作。</p>
+        </div>
+      </aside>
+    </section>
+
+    <footer>
+      <span>安全策略：连接断开、网页失焦、按键释放或固件 300 ms 未收到指令时自动停车。</span>
+      <span class="mono">F · B · L · R · S</span>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

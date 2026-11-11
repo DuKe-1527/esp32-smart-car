@@ -1,0 +1,13 @@
+{
+  "name": "esp32-car-web-controller",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local graphical controller and NetAssist-compatible TCP bridge for the ESP32 car.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
